@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase 이미지 쉐어</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f4f7f6; }
+        .upload-section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        input, textarea, button { width: 100%; margin-top: 10px; padding: 10px; box-sizing: border-box; }
+        button { background-color: #3ecf8e; color: white; border: none; cursor: pointer; font-weight: bold; }
+        .post-card { background: white; margin-top: 20px; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .post-card img { width: 100%; display: block; }
+        .post-card p { padding: 15px; margin: 0; }
+    </style>
+</head>
+<body>
+
+    <h2>📸 이미지 공유 앱</h2>
+
+    <div class="upload-section">
+        <input type="file" id="imageInput" accept="image/*">
+        <textarea id="descInput" placeholder="이미지에 대한 설명을 적어주세요..."></textarea>
+        <button onclick="uploadPost()">업로드하기</button>
+    </div>
+
+    <div id="feed"></div>
+
+    <script>
+        // 1. 설정 (URL 형식을 꼭 확인하세요!)
+        const SUPABASE_URL = 'https://eqxdedztebcbgbblxody.supabase.co'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeGRlZHp0ZWJjYmdiYmx4b2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NjQ1MDksImV4cCI6MjA4ODQ0MDUwOX0.WpSF-sResnQKk2dEmIL4q9WS90gWEBTjdQpENmyOOjo';
+
+        // 'supabase' 대신 '_supabase'라는 이름을 사용하여 충돌 방지
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function fetchPosts() {
+            try {
+                const { data, error } = await _supabase
+                    .from('posts')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                renderPosts(data);
+            } catch (err) {
+                console.error('불러오기 실패:', err.message);
+            }
+        }
+
+        function renderPosts(posts) {
+            const feed = document.getElementById('feed');
+            feed.innerHTML = '';
+            posts.forEach(post => {
+                const card = document.createElement('div');
+                card.className = 'post-card';
+                card.innerHTML = `
+                    <img src="${post.image_url}" alt="Post Image">
+                    <p>${post.description}</p>
+                `;
+                feed.appendChild(card);
+            });
+        }
+
+        async function uploadPost() {
+            const fileInput = document.getElementById('imageInput');
+            const descInput = document.getElementById('descInput');
+            
+            if (fileInput.files.length === 0) return alert('이미지를 선택하세요!');
+
+            const file = fileInput.files[0];
+            const fileName = `${Date.now()}_${file.name}`;
+
+            try {
+                // A. Storage 업로드
+                const { data: uploadData, error: uploadError } = await _supabase.storage
+                    .from('images')
+                    .upload(fileName, file);
+
+                if (uploadError) throw uploadError;
+
+                // B. URL 가져오기
+                const { data: urlData } = _supabase.storage
+                    .from('images')
+                    .getPublicUrl(fileName);
+                
+                const publicUrl = urlData.publicUrl;
+
+                // C. DB 저장
+                const { error: dbError } = await _supabase
+                    .from('posts')
+                    .insert([{ description: descInput.value, image_url: publicUrl }]);
+
+                if (dbError) throw dbError;
+
+                alert('업로드 완료!');
+                descInput.value = '';
+                fileInput.value = '';
+                fetchPosts();
+            } catch (err) {
+                alert('에러 발생: ' + err.message);
+                console.error(err);
+            }
+        }
+
+        fetchPosts();
+    </script>
+</body>
+</html>
