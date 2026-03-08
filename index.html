@@ -5,144 +5,318 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>작가 리서치</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        /* Force Gulim across all UI elements */
-        html, body, h1, h2, h3, h4, h5, h6, p, a, span, div,
-        input, textarea, select, button, label, option { font-family: 'Gulim', sans-serif !important; }
-
-        body { max-width: 800px; margin: 0 auto; padding: 20px; background-color: #ffffff; color: #000000; }
-        h2 { text-align: center; color: #000000; margin-bottom: 30px; }
-
-        /* Upload section */
-        .upload-section { background: #ffffff; padding: 20px; border-radius: 6px; box-shadow: none; margin-bottom: 30px; border: 1px solid #f0f0f0; }
-        .input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-        input, textarea { padding: 10px; border: 1px solid #f0f0f0; border-radius: 6px; font-size: 14px; width: 100%; box-sizing: border-box; background: #ffffff; color: #000000; }
-        textarea { grid-column: span 2; height: 80px; resize: none; }
-        .full-width { grid-column: span 2; }
-        button { background-color: #ffffff; color: #000000; border: 1px solid #000000; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; }
-        button:hover { background-color: #f0f0f0; }
-
-        /* Feed layout */
-        #feed { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 30px; }
-        .post-card { background: #ffffff; border-radius: 0; overflow: hidden; box-shadow: none; border-bottom: 3px solid #ffffff; }
-        .post-card img { width: 100%; height: 400px; object-fit: cover; display: block; border-bottom: 1px solid #ffffff; }
-
-        /* Caption */
-        .caption { padding: 20px; }
-        .caption .artist-name { font-size: 14px; color: #444444; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
-        .caption .work-title { font-size: 18px; font-weight: bold; margin-bottom: 5px; color: #000000; }
-        .caption .work-year { font-size: 14px; color: #666666; margin-bottom: 15px; }
-        .caption .work-note { font-size: 14px; line-height: 1.6; color: #444444; margin-top: 10px; border-top: none; }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
     <h2>작가 리서치</h2>
 
     <div class="upload-section">
+        <div class="author-tags" id="authorTags"></div>
         <div class="input-group">
+            <input type="text" id="authorInput" placeholder="글쓴이">
             <input type="text" id="artistInput" placeholder="작가">
-            <input type="text" id="yearInput" placeholder="제작년도">
             <input type="text" id="titleInput" placeholder="제목" class="full-width">
+            <input type="text" id="yearInput" placeholder="제작년도" class="full-width">
             <textarea id="descInput" placeholder="추가 정보"></textarea>
-            <input type="file" id="imageInput" accept="image/*" class="full-width">
+            <input type="file" id="imageInput" accept="image/*" class="full-width" onchange="showPreview(event)">
         </div>
-        <button onclick="uploadPost()">추가</button>
+
+        <div id="previewContainer" class="preview-container">
+            <div class="preview-wrapper">
+                <img id="imagePreview" class="preview-image" src="" alt="미리보기">
+                <button type="button" class="cancel-btn" onclick="cancelPreview()" title="선택 취소">X</button>
+            </div>
+        </div>
+
+        <button class="main-btn" onclick="uploadPost()">추가</button>
+    </div>
+
+    <div class="filter-container">
+        <span>작성자별 필터:</span>
+        <select id="authorFilter" onchange="fetchPosts(this.value)">
+            <option value="all">전체 보기</option>
+        </select>
     </div>
 
     <div id="feed"></div>
 
+    <div id="imageModal" class="modal" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true">
+            <img id="modalImage" src="" alt="">
+            <div id="modalCaption" class="modal-caption"></div>
+        </div>
+        <button id="modalCloseGlobal" class="modal-close-global" aria-label="닫기">&times;</button>
+    </div>
+
+    <footer class="footer">
+        안녕하세요. 본 페이지는 신은우에 의해 작가 리서치를 목적으로 제작되었습니다. 오류와 문의 사항을 아래 메일로 보내주세요. <br><a href="mailto:dmsdn345@gmail.com">dmsdn345@gmail.com</a>
+    </footer>
+
     <script>
-        // 1. Supabase 설정 (본인의 정보로 유지하세요)
+        // Supabase 설정 (본인 정보 유지)
         const SUPABASE_URL = 'https://eqxdedztebcbgbblxody.supabase.co'; 
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeGRlZHp0ZWJjYmdiYmx4b2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NjQ1MDksImV4cCI6MjA4ODQ0MDUwOX0.WpSF-sResnQKk2dEmIL4q9WS90gWEBTjdQpENmyOOjo';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 2. 데이터 불러오기
-        async function fetchPosts() {
-            const { data, error } = await _supabase
-                .from('posts')
-                .select('*')
-                .order('created_at', { ascending: false });
+        let contributorsList = [];
+        let postsCache = [];
 
+        async function init() {
+            await fetchContributors();
+            await fetchPosts();
+        }
+
+        async function fetchContributors() {
+            const { data, error } = await _supabase.from('contributors').select('name').order('name');
+            if (error) return;
+
+            contributorsList = data.map(c => c.name);
+            renderAuthorUI();
+        }
+
+        function renderAuthorUI() {
+            const tagContainer = document.getElementById('authorTags');
+            const filterSelect = document.getElementById('authorFilter');
+            
+            tagContainer.innerHTML = '';
+            filterSelect.innerHTML = '<option value="all">전체 보기</option>';
+
+            contributorsList.forEach(name => {
+                const btn = document.createElement('button');
+                btn.className = 'author-tag-btn';
+                btn.innerText = name;
+                btn.onclick = () => document.getElementById('authorInput').value = name;
+                tagContainer.appendChild(btn);
+
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.innerText = name;
+                filterSelect.appendChild(opt);
+            });
+        }
+
+        async function fetchPosts(selectedAuthor = 'all') {
+            let query = _supabase.from('posts').select('*').order('created_at', { ascending: false });
+
+            if (selectedAuthor !== 'all') {
+                query = query.eq('author', selectedAuthor);
+            }
+
+            const { data, error } = await query;
             if (error) console.error('Fetch Error:', error);
             else renderPosts(data);
         }
 
-        // 3. 렌더링 (작품 캡션 형태)
         function renderPosts(posts) {
+            postsCache = posts || [];
             const feed = document.getElementById('feed');
             feed.innerHTML = '';
             posts.forEach(post => {
                 const card = document.createElement('div');
                 card.className = 'post-card';
+                card.id = `post-${post.id}`;
+                // embed post data for edit button using JSON.stringify and escaping quotes
+                const safePost = JSON.stringify(post).replace(/"/g, '&quot;');
                 card.innerHTML = `
-                    <img src="${post.image_url}" alt="${post.title}">
-                    <div class="caption">
+                    <img src="${post.image_url}" alt="${post.title}" onclick="openModalById(${post.id})">
+                    <div class="caption" id="caption-${post.id}">
                         <div class="artist-name">${post.artist || '알 수 없음'}</div>
                         <div class="work-title">${post.title || '알 수 없음'}</div>
                         <div class="work-year">${post.year || '알 수 없음'}</div>
                         ${post.description ? `<div class="work-note">${post.description}</div>` : ''}
+                        <div class="posted-by">Shared by ${post.author || '알 수 없음'}</div>
+                        <div class="edit-controls">
+                            <button class="edit-btn" onclick="toggleEditMode(${post.id}, ${safePost})">수정</button>
+                        </div>
                     </div>
                 `;
                 feed.appendChild(card);
             });
         }
 
-        // 4. 업로드 (확장된 필드 반영)
-        async function uploadPost() {
+        // --- 수정 모드 전환 함수 ---
+        function toggleEditMode(id, post) {
+            const captionArea = document.getElementById(`caption-${id}`);
+            if (!captionArea) return;
+            captionArea.classList.add('edit-mode-active');
+            captionArea.innerHTML = `
+                <input type="text" class="edit-input" id="edit-artist-${id}" value="${post.artist || ''}" placeholder="작가">
+                <input type="text" class="edit-input" id="edit-title-${id}" value="${post.title || ''}" placeholder="제목">
+                <input type="text" class="edit-input" id="edit-year-${id}" value="${post.year || ''}" placeholder="제작년도">
+                <textarea class="edit-input" id="edit-desc-${id}" placeholder="추가 정보">${post.description || ''}</textarea>
+                <input type="text" class="edit-input" id="edit-author-${id}" value="${post.author || ''}" placeholder="글쓴이">
+                <div class="edit-controls">
+                    <button class="save-btn" onclick="savePost(${id})">저장</button>
+                    <button class="cancel-btn-inline" onclick="fetchPosts()">취소</button>
+                    <span style="color:#eee">|</span>
+                    <button class="delete-btn-inline" onclick="deletePost(${id}, '${post.image_url}')">삭제</button>
+                </div>
+            `;
+        }
+
+        // --- 수정 내용 저장 함수 ---
+        async function savePost(id) {
+            const newArtist = document.getElementById(`edit-artist-${id}`).value;
+            const newTitle = document.getElementById(`edit-title-${id}`).value;
+            const newYear = document.getElementById(`edit-year-${id}`).value;
+            const newDesc = document.getElementById(`edit-desc-${id}`).value;
+            const newAuthor = document.getElementById(`edit-author-${id}`).value;
+
+            const { error } = await _supabase.from('posts').update({
+                artist: newArtist,
+                title: newTitle,
+                year: newYear,
+                description: newDesc,
+                author: newAuthor
+            }).eq('id', id);
+
+            if (error) alert('수정 실패: ' + error.message);
+            else {
+                alert('수정되었습니다.');
+                fetchPosts();
+            }
+        }
+
+        // --- 삭제 함수 ---
+        async function deletePost(id, imageUrl) {
+            if (!confirm("정말로 이 기록을 삭제하시겠습니까?")) return;
+
+            try {
+                // 1. 스토리지 파일 삭제
+                const fileName = imageUrl.split('/').pop();
+                const { error: storageError } = await _supabase.storage.from('images').remove([fileName]);
+                if (storageError) throw storageError;
+                
+                // 2. DB 레코드 삭제
+                const { error: dbError } = await _supabase.from('posts').delete().eq('id', id);
+
+                if (dbError) throw dbError;
+                alert('삭제 완료');
+                fetchPosts();
+            } catch (err) {
+                alert('삭제 중 에러 발생: ' + err.message);
+            }
+        }
+
+        function openModalById(id) {
+            const post = postsCache.find(p => p.id === id);
+            if (post) openModal(post);
+        }
+
+        /* --- 모달 관련 함수 --- */
+        function openModal(post) {
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById('modalImage');
+            const modalCaption = document.getElementById('modalCaption');
+            modalImg.src = post.image_url || '';
+            modalImg.alt = post.title || '';
+            const artist = post.artist && post.artist.trim() ? post.artist : '알 수 없음';
+            const title = post.title && post.title.trim() ? post.title : '알 수 없음';
+            const year = post.year && String(post.year).trim() ? post.year : '알 수 없음';
+            modalCaption.innerHTML = `<div class="mc-artist">${artist}</div><div class="mc-title">${title}</div><div class="mc-year">${year}</div>`;
+            modal.classList.add('open');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById('modalImage');
+            modal.classList.remove('open');
+            modal.setAttribute('aria-hidden', 'true');
+            modalImg.src = '';
+            const modalCaption = document.getElementById('modalCaption');
+            if (modalCaption) modalCaption.innerHTML = '';
+            document.body.style.overflow = '';
+        }
+
+        document.addEventListener('click', (e) => {
+            const modal = document.getElementById('imageModal');
+            if (!modal) return;
+            if (e.target === modal) closeModal();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        const closeBtn = document.getElementById('modalCloseGlobal');
+        if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+
+        /* --- 이미지 미리보기 및 취소 함수 --- */
+        function showPreview(event) {
+            const file = event.target.files[0];
+            const previewContainer = document.getElementById('previewContainer');
+            const imagePreview = document.getElementById('imagePreview');
+            
+            if (file) {
+                imagePreview.src = URL.createObjectURL(file);
+                previewContainer.style.display = 'block';
+            } else {
+                cancelPreview();
+            }
+        }
+
+        function cancelPreview() {
             const fileInput = document.getElementById('imageInput');
+            const previewContainer = document.getElementById('previewContainer');
+            const imagePreview = document.getElementById('imagePreview');
+            
+            fileInput.value = ''; 
+            imagePreview.src = ''; 
+            previewContainer.style.display = 'none'; 
+        }
+
+
+        /* --- 업로드 함수 --- */
+        async function uploadPost() {
+            const authorInput = document.getElementById('authorInput');
             const artistInput = document.getElementById('artistInput');
             const titleInput = document.getElementById('titleInput');
             const yearInput = document.getElementById('yearInput');
             const descInput = document.getElementById('descInput');
+            const fileInput = document.getElementById('imageInput');
             
+            const authorName = authorInput.value.trim();
+            if (!authorName) return alert('글쓴이를 입력하십시오.');
             if (fileInput.files.length === 0) return alert('이미지를 선택하십시오.');
 
             const file = fileInput.files[0];
-            const fileName = `${Date.now()}_${file.name}`;
+            const fileExt = file.name.split('.').pop();
+            const safeRandomStr = Math.random().toString(36).substring(2, 10);
+            const fileName = `${Date.now()}_${safeRandomStr}.${fileExt}`;
 
             try {
-                // A. Storage 업로드
-                const { data: uploadData, error: uploadError } = await _supabase.storage
-                    .from('images')
-                    .upload(fileName, file);
+                if (!contributorsList.includes(authorName)) {
+                    await _supabase.from('contributors').insert([{ name: authorName }]);
+                }
 
+                const { error: uploadError } = await _supabase.storage.from('images').upload(fileName, file);
                 if (uploadError) throw uploadError;
 
-                // B. 공개 URL 가져오기
-                const { data: urlData } = _supabase.storage
-                    .from('images')
-                    .getPublicUrl(fileName);
+                const { data: urlData } = _supabase.storage.from('images').getPublicUrl(fileName);
                 
-                const publicUrl = urlData.publicUrl;
-
-                // C. DB 저장 (새로운 컬럼들 포함)
-                const { error: dbError } = await _supabase
-                    .from('posts')
-                    .insert([{ 
-                        artist: artistInput.value,
-                        title: titleInput.value,
-                        year: yearInput.value,
-                        description: descInput.value,
-                        image_url: publicUrl 
-                    }]);
+                const { error: dbError } = await _supabase.from('posts').insert([{ 
+                    author: authorName,
+                    artist: artistInput.value,
+                    title: titleInput.value,
+                    year: yearInput.value,
+                    description: descInput.value,
+                    image_url: urlData.publicUrl 
+                }]);
 
                 if (dbError) throw dbError;
 
-                alert('기록은 완료하였습니다.');
-                
-                // 입력 필드 초기화
-                [artistInput, titleInput, yearInput, descInput, fileInput].forEach(i => i.value = '');
-                fetchPosts(); 
+                alert('추가 완료');
+                location.reload();
 
             } catch (err) {
                 alert('에러 발생: ' + err.message);
-                console.error(err);
             }
         }
-
-        fetchPosts();
+        init();
     </script>
 </body>
 </html>

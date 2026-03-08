@@ -1,0 +1,116 @@
+/* Force Gulim across all UI elements */
+html, body, h1, h2, h3, h4, h5, h6, p, a, span, div,
+input, textarea, select, button, label, option { font-family: 'Gulim', sans-serif !important; }
+
+body { max-width: 800px; margin: 0 auto; padding: 20px; background-color: #ffffff; color: #000000; }
+h2 { text-align: center; color: #000000; margin-bottom: 30px; letter-spacing: 2px; }
+
+/* Upload section */
+.upload-section { background: #ffffff; padding: 20px; border-radius: 6px; margin-bottom: 30px; border: 1px solid #f0f0f0; }
+.input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+input, textarea, select { padding: 10px; border: 1px solid #f0f0f0; border-radius: 6px; font-size: 14px; width: 100%; box-sizing: border-box; background: #ffffff; color: #000000; }
+textarea { grid-column: span 2; height: 80px; resize: none; }
+.full-width { grid-column: span 2; }
+
+/* Author Tags */
+.author-tags { margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 5px; }
+.author-tag-btn { background: #f9f9f9; border: 1px solid #eee; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+.author-tag-btn:hover { background: #f0f0f0; }
+
+/* Image Preview Section */
+.preview-container { display: none; text-align: center; margin-bottom: 15px; }
+.preview-wrapper { position: relative; display: inline-block; }
+.preview-image { max-width: 200px; max-height: 200px; border: 1px dashed #ccc; padding: 4px; background: #fafafa; object-fit: contain; }
+.cancel-btn { position: absolute; top: -10px; right: -10px; background: #ffffff; color: #000000; border: 1px solid #000000; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; padding: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.cancel-btn:hover { background: #f0f0f0; }
+
+button.main-btn { background-color: #ffffff; color: #000000; border: 1px solid #000000; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; }
+button.main-btn:hover { background-color: #f0f0f0; }
+
+/* Filtering section */
+.filter-container { display: flex; justify-content: flex-end; margin-bottom: 20px; align-items: center; gap: 10px; font-size: 13px; }
+.filter-container select { width: auto; min-width: 120px; padding: 5px; border: 1px solid #000; }
+
+/* Feed layout */
+#feed { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 40px; }
+.post-card { background: #ffffff; overflow: hidden; border-bottom: 1px solid #f0f0f0; padding-bottom: 20px; }
+.post-card img { width: 100%; height: auto; max-height: 80vh; object-fit: contain; display: block; background-color: #f9f9f9; }
+
+/* Caption */
+.caption { padding: 15px 0; }
+.caption .artist-name { font-size: 13px; color: #666; text-transform: uppercase; margin-bottom: 4px; }
+.caption .work-title { font-size: 17px; font-weight: bold; margin-bottom: 4px; color: #000; }
+.caption .work-year { font-size: 13px; color: #888; margin-bottom: 10px; }
+.caption .work-note { font-size: 13px; line-height: 1.5; color: #444; margin-top: 10px; }
+.caption .posted-by { font-size: 11px; color: #aaa; margin-top: 15px; border-top: 1px solid #fcfcfc; padding-top: 5px; }
+
+/* Modal/backdrop */
+.modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(255,255,255,0.92); z-index: 1000; }
+.modal.open { display: flex; animation: fadeIn .12s ease both; }
+.modal-content { position: relative; max-width: 92vw; max-height: 92vh; padding: 8px; display: flex; flex-direction: column; align-items: center; }
+.modal-content img { max-width: 100%; max-height: 78vh; object-fit: contain; box-shadow: none; background: transparent; }
+.modal-close-global { position: fixed; top: 16px; right: 18px; background: rgba(0,0,0,0.05); border: none; width: 40px; height: 40px; border-radius: 20px; font-size: 22px; line-height: 1; cursor: pointer; color: #111; z-index: 1101; display:flex; align-items:center; justify-content:center; }
+.modal-close-global:focus { outline: 2px solid #000; }
+.modal-caption { margin-top: 10px; color: #333; font-size: 14px; text-align: center; max-width: 90vw; word-break: break-word; }
+.modal-caption .mc-artist { font-size: 13px; color: #666; text-transform: uppercase; }
+.modal-caption .mc-title { font-size: 17px; font-weight: 700; color: #000; margin: 6px 0; }
+.modal-caption .mc-year { font-size: 13px; color: #666; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Footer style 추가 */
+.footer {
+    margin-top: 80px;
+    padding: 40px 0;
+    text-align: center;
+    border-top: 1px solid #f0f0f0;
+    font-size: 12px;
+    color: #888;
+}
+.footer a {
+    color: #888;
+    text-decoration: none;
+    margin-left: 5px;
+}
+.footer a:hover {
+    color: #000;
+}
+
+/* 기존 스타일에 아래 내용 추가 및 업데이트 */
+
+.post-card .edit-input {
+    width: 100%;
+    margin-bottom: 5px;
+    padding: 5px;
+    border: 1px solid #000;
+    font-size: 13px;
+    font-family: 'Gulim', sans-serif !important;
+}
+
+.edit-controls {
+    margin-top: 15px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.edit-btn, .save-btn, .cancel-btn-inline, .delete-btn-inline {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: underline;
+    font-size: 12px;
+    font-family: 'Gulim', sans-serif !important;
+}
+
+.edit-btn { color: #888; }
+.save-btn { color: #000; font-weight: bold; }
+.cancel-btn-inline { color: #888; }
+.delete-btn-inline { color: #ff0000; margin-left: 5px; } /* 수정 옆에 조용히 나타나는 빨간색 삭제 */
+
+.edit-mode-active {
+    background-color: #f9f9f9;
+    padding: 10px;
+}
