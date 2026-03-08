@@ -3,52 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Supabase 이미지 쉐어</title>
+    <title>작가 리서치</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f4f7f6; }
-        .upload-section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        input, textarea, button { width: 100%; margin-top: 10px; padding: 10px; box-sizing: border-box; }
-        button { background-color: #3ecf8e; color: white; border: none; cursor: pointer; font-weight: bold; }
-        .post-card { background: white; margin-top: 20px; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .post-card img { width: 100%; display: block; }
-        .post-card p { padding: 15px; margin: 0; }
+        /* Force Gulim across all UI elements */
+        html, body, h1, h2, h3, h4, h5, h6, p, a, span, div,
+        input, textarea, select, button, label, option { font-family: 'Gulim', sans-serif !important; }
+
+        body { max-width: 800px; margin: 0 auto; padding: 20px; background-color: #ffffff; color: #000000; }
+        h2 { text-align: center; color: #000000; margin-bottom: 30px; }
+
+        /* Upload section */
+        .upload-section { background: #ffffff; padding: 20px; border-radius: 6px; box-shadow: none; margin-bottom: 30px; border: 1px solid #f0f0f0; }
+        .input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        input, textarea { padding: 10px; border: 1px solid #f0f0f0; border-radius: 6px; font-size: 14px; width: 100%; box-sizing: border-box; background: #ffffff; color: #000000; }
+        textarea { grid-column: span 2; height: 80px; resize: none; }
+        .full-width { grid-column: span 2; }
+        button { background-color: #ffffff; color: #000000; border: 1px solid #000000; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; }
+        button:hover { background-color: #f0f0f0; }
+
+        /* Feed layout */
+        #feed { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 30px; }
+        .post-card { background: #ffffff; border-radius: 0; overflow: hidden; box-shadow: none; border-bottom: 3px solid #ffffff; }
+        .post-card img { width: 100%; height: 400px; object-fit: cover; display: block; border-bottom: 1px solid #ffffff; }
+
+        /* Caption */
+        .caption { padding: 20px; }
+        .caption .artist-name { font-size: 14px; color: #444444; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        .caption .work-title { font-size: 18px; font-weight: bold; margin-bottom: 5px; color: #000000; }
+        .caption .work-year { font-size: 14px; color: #666666; margin-bottom: 15px; }
+        .caption .work-note { font-size: 14px; line-height: 1.6; color: #444444; margin-top: 10px; border-top: none; }
     </style>
 </head>
 <body>
 
-    <h2>📸 이미지 공유 앱</h2>
+    <h2>작가 리서치</h2>
 
     <div class="upload-section">
-        <input type="file" id="imageInput" accept="image/*">
-        <textarea id="descInput" placeholder="이미지에 대한 설명을 적어주세요..."></textarea>
-        <button onclick="uploadPost()">업로드하기</button>
+        <div class="input-group">
+            <input type="text" id="artistInput" placeholder="작가">
+            <input type="text" id="yearInput" placeholder="제작년도">
+            <input type="text" id="titleInput" placeholder="제목" class="full-width">
+            <textarea id="descInput" placeholder="추가 정보"></textarea>
+            <input type="file" id="imageInput" accept="image/*" class="full-width">
+        </div>
+        <button onclick="uploadPost()">추가</button>
     </div>
 
     <div id="feed"></div>
 
     <script>
-        // 1. 설정 (URL 형식을 꼭 확인하세요!)
+        // 1. Supabase 설정 (본인의 정보로 유지하세요)
         const SUPABASE_URL = 'https://eqxdedztebcbgbblxody.supabase.co'; 
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeGRlZHp0ZWJjYmdiYmx4b2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NjQ1MDksImV4cCI6MjA4ODQ0MDUwOX0.WpSF-sResnQKk2dEmIL4q9WS90gWEBTjdQpENmyOOjo';
-
-        // 'supabase' 대신 '_supabase'라는 이름을 사용하여 충돌 방지
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // 2. 데이터 불러오기
         async function fetchPosts() {
-            try {
-                const { data, error } = await _supabase
-                    .from('posts')
-                    .select('*')
-                    .order('created_at', { ascending: false });
+            const { data, error } = await _supabase
+                .from('posts')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-                if (error) throw error;
-                renderPosts(data);
-            } catch (err) {
-                console.error('불러오기 실패:', err.message);
-            }
+            if (error) console.error('Fetch Error:', error);
+            else renderPosts(data);
         }
 
+        // 3. 렌더링 (작품 캡션 형태)
         function renderPosts(posts) {
             const feed = document.getElementById('feed');
             feed.innerHTML = '';
@@ -56,18 +77,27 @@
                 const card = document.createElement('div');
                 card.className = 'post-card';
                 card.innerHTML = `
-                    <img src="${post.image_url}" alt="Post Image">
-                    <p>${post.description}</p>
+                    <img src="${post.image_url}" alt="${post.title}">
+                    <div class="caption">
+                        <div class="artist-name">${post.artist || '알 수 없음'}</div>
+                        <div class="work-title">${post.title || '알 수 없음'}</div>
+                        <div class="work-year">${post.year || '알 수 없음'}</div>
+                        ${post.description ? `<div class="work-note">${post.description}</div>` : ''}
+                    </div>
                 `;
                 feed.appendChild(card);
             });
         }
 
+        // 4. 업로드 (확장된 필드 반영)
         async function uploadPost() {
             const fileInput = document.getElementById('imageInput');
+            const artistInput = document.getElementById('artistInput');
+            const titleInput = document.getElementById('titleInput');
+            const yearInput = document.getElementById('yearInput');
             const descInput = document.getElementById('descInput');
             
-            if (fileInput.files.length === 0) return alert('이미지를 선택하세요!');
+            if (fileInput.files.length === 0) return alert('이미지를 선택하십시오.');
 
             const file = fileInput.files[0];
             const fileName = `${Date.now()}_${file.name}`;
@@ -80,24 +110,32 @@
 
                 if (uploadError) throw uploadError;
 
-                // B. URL 가져오기
+                // B. 공개 URL 가져오기
                 const { data: urlData } = _supabase.storage
                     .from('images')
                     .getPublicUrl(fileName);
                 
                 const publicUrl = urlData.publicUrl;
 
-                // C. DB 저장
+                // C. DB 저장 (새로운 컬럼들 포함)
                 const { error: dbError } = await _supabase
                     .from('posts')
-                    .insert([{ description: descInput.value, image_url: publicUrl }]);
+                    .insert([{ 
+                        artist: artistInput.value,
+                        title: titleInput.value,
+                        year: yearInput.value,
+                        description: descInput.value,
+                        image_url: publicUrl 
+                    }]);
 
                 if (dbError) throw dbError;
 
-                alert('업로드 완료!');
-                descInput.value = '';
-                fileInput.value = '';
-                fetchPosts();
+                alert('기록은 완료하였습니다.');
+                
+                // 입력 필드 초기화
+                [artistInput, titleInput, yearInput, descInput, fileInput].forEach(i => i.value = '');
+                fetchPosts(); 
+
             } catch (err) {
                 alert('에러 발생: ' + err.message);
                 console.error(err);
