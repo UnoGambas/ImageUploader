@@ -14,6 +14,10 @@ textarea { grid-column: span 2; height: 80px; resize: none; }
 
 /* Author Tags */
 .author-tags { margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 5px; }
+.author-tag { background: #f9f9f9; border: 1px solid #eee; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+.author-tag:hover { background: #f0f0f0; }
+
+/* keep backward compatibility if older markup used this */
 .author-tag-btn { background: #f9f9f9; border: 1px solid #eee; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; }
 .author-tag-btn:hover { background: #f0f0f0; }
 
@@ -43,6 +47,19 @@ button.main-btn:hover { background-color: #f0f0f0; }
 .caption .work-year { font-size: 13px; color: #888; margin-bottom: 10px; }
 .caption .work-note { font-size: 13px; line-height: 1.5; color: #444; margin-top: 10px; }
 .caption .posted-by { font-size: 11px; color: #aaa; margin-top: 15px; border-top: 1px solid #fcfcfc; padding-top: 5px; }
+
+/* Work source link for captions */
+.caption .work-source {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 12px;
+    color: #888;
+    text-decoration: underline;
+}
+
+.caption .work-source:hover {
+    color: #000;
+}
 
 /* Modal/backdrop */
 .modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(255,255,255,0.92); z-index: 1000; }
