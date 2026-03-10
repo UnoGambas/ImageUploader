@@ -60,13 +60,11 @@ window.uploadPost = async function () {
     }
 
     let imageUrl = null;
-    let imagePath = null;
 
     try {
         if (selectedFile) {
             const fileExt = selectedFile.name.split('.').pop();
             const fileName = `${Date.now()}-${Math.random().toString(16).slice(2)}.${fileExt}`;
-            imagePath = fileName;
 
             const { error: storageError } = await supabaseClient.storage
                 .from('images')
@@ -74,27 +72,25 @@ window.uploadPost = async function () {
 
             if (storageError) throw storageError;
 
-            const { data: publicUrlData } = supabaseClient.storage
-                .from('images')
-                .getPublicUrl(fileName);
-
+            const { data: publicUrlData } = supabaseClient.storage.from('images').getPublicUrl(fileName);
             imageUrl = publicUrlData.publicUrl;
         }
 
+        const payload = {
+            author,
+            artist,
+            title,
+            year: year || null,
+            description: desc || null,
+            source_url: sourceUrl || null,
+            image_url: imageUrl,
+            // NOTE: image_path column does not exist in DB (PGRST204). Do not send it.
+        };
+
         const { error: insertError } = await supabaseClient
             .from('posts')
-            .insert([
-                {
-                    author,
-                    artist,
-                    title,
-                    year: year || null,
-                    description: desc || null,
-                    source_url: sourceUrl || null,
-                    image_url: imageUrl,
-                    image_path: imagePath,
-                },
-            ]);
+            // return=representation helps surface PostgREST error details and is also useful for debugging
+            .insert([payload], { returning: 'representation' });
 
         if (insertError) throw insertError;
 
@@ -110,8 +106,23 @@ window.uploadPost = async function () {
         await refreshAuthorsAndUI();
         await fetchPosts(document.getElementById('authorFilter').value || 'all');
     } catch (error) {
-        console.error(error);
-        alert('업로드 중 오류가 발생했습니다. (Supabase 권한/테이블 컬럼을 확인하세요)');
+        // Supabase/PostgREST error shape: { message, details, hint, code }
+        console.error('uploadPost failed:', {
+            error,
+            message: error?.message,
+            details: error?.details,
+            hint: error?.hint,
+            code: error?.code,
+        });
+        const msg = [
+            error?.message,
+            error?.details,
+            error?.hint,
+            error?.code ? `(code: ${error.code})` : null,
+        ]
+            .filter(Boolean)
+            .join('\n');
+        alert(msg || '업로드 중 오류가 발생했습니다. 콘솔을 확인하세요.');
     }
 };
 
@@ -499,12 +510,11 @@ async function deletePost(id) {
         const { error: deleteError } = await supabaseClient.from('posts').delete().eq('id', id);
         if (deleteError) throw deleteError;
 
-        // 이미지 파일 삭제 (가능하면 image_path 사용, 없으면 URL에서 파싱)
-        const path = post.image_path || (post.image_url ? extractPathFromPublicUrl(post.image_url) : null);
+        // 이미지 파일 삭제: DB에 image_path가 없으므로 public URL에서 파싱
+        const path = post.image_url ? extractPathFromPublicUrl(post.image_url) : null;
         if (path) {
             const { error: storageError } = await supabaseClient.storage.from('images').remove([path]);
             if (storageError) {
-                // 파일 삭제 실패는 치명적이지 않게 처리
                 console.warn('storage remove failed:', storageError);
             }
         }
